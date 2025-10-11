@@ -1,8 +1,20 @@
 import streamlit as st
 from streamlit_navigation_bar import st_navbar
 import time
+from PIL import Image
 
-# set page configuration
+# ML components imports
+from components import (
+    load_oral_cancer_model, 
+    CLASS_NAMES, 
+    device,
+    get_image_transform, 
+    preprocess_image,
+    predict_image_class, 
+    get_prediction_feedback
+)
+
+# Set page configuration
 st.set_page_config(
     page_title="Umlomo - Oral Health AI",
     page_icon="🦷",
@@ -10,7 +22,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# custom CSS for styling
+# Initialize ML pipeline with caching
+@st.cache_resource
+def initialize_ml_pipeline():
+    """Initialize the complete ML pipeline with optimizations"""
+    model = load_oral_cancer_model('Model/UmlomoV1.pth')
+    transform = get_image_transform()
+    return model, transform
+
+# Load model and transform
+model, transform = initialize_ml_pipeline()
+
+# Custom CSS for styling - ADDED NEW STYLES FOR ML RESULTS
 st.markdown("""
 <style>
     .main-header {
@@ -64,13 +87,29 @@ st.markdown("""
         background-color: #e8f4fd;
         border-color: #2e86ab;
     }
-    .analysis-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .result-high {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
         color: white;
-        padding: 2rem;
-        border-radius: 15px;
+        padding: 1.5rem;
+        border-radius: 10px;
         margin: 1rem 0;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        border-left: 5px solid #ff4757;
+    }
+    .result-medium {
+        background: linear-gradient(135deg, #ffa502 0%, #e67e22 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 5px solid #ff7f50;
+    }
+    .result-low {
+        background: linear-gradient(135deg, #2ed573 0%, #1dd1a1 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 5px solid #00b894;
     }
     .feature-card {
         background: white;
@@ -106,21 +145,21 @@ def render_footer():
     """Render the static footer with same height as navbar"""
     st.markdown("""
     <div class="footer">
-        <p style="margin: 0; font-size: 0.9em;">Umlomo - Revolutionizing Oral Health with AI | Developed for Better Smiles</p>
-        <p style="margin: 0; font-size: 0.7em;">© 2024 Umlomo Team. All rights reserved.</p>
+        <p style="margin: 0; font-size: 0.9em;">Developed with ♥ for Better Smiles</p>
+        <p style="margin: 0; font-size: 0.7em;">© 2025 Umlomo Team. All rights reserved.</p>
     </div>
     """, unsafe_allow_html=True)
 
 def render_home_tab():
     """Home tab content without videos"""
     
-    # big project name - home tab
+    # Big project name - home tab
     st.markdown('<div class="main-header">Umlomo</div>', unsafe_allow_html=True)
     
-    # introduction section
+    # Introduction section
     st.markdown('<div class="section-header">Why Oral Health Matters</div>', unsafe_allow_html=True)
     
-    # three key features in columns
+    # Three key features in columns
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -150,7 +189,7 @@ def render_home_tab():
         </div>
         """, unsafe_allow_html=True)
     
-    # key insights section
+    # Key insights section
     st.markdown("---")
     st.markdown('<div class="section-header">Key Insights</div>', unsafe_allow_html=True)
     
@@ -179,234 +218,130 @@ def render_home_tab():
             <p>diagnosis compared to traditional methods, enabling quicker treatment and better outcomes</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # additional benefits
-    st.markdown("---")
-    st.markdown('<div class="section-header">Benefits of Regular Monitoring</div>', unsafe_allow_html=True)
-    
-    benefits_col1, benefits_col2, benefits_col3 = st.columns(3)
-    
-    with benefits_col1:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Cost Effective</h4>
-            <ul>
-            <li>Save up to 60% on dental bills</li>
-            <li>Prevent expensive procedures</li>
-            <li>Early intervention savings</li>
-            <li>Reduced emergency costs</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with benefits_col2:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Time Saving</h4>
-            <ul>
-            <li>No appointment wait times</li>
-            <li>Instant results and analysis</li>
-            <li>24/7 availability</li>
-            <li>Reduced clinic visits</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with benefits_col3:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Confidence Boost</h4>
-            <ul>
-            <li>Maintain a healthy smile</li>
-            <li>Prevent bad breath issues</li>
-            <li>Build self-confidence</li>
-            <li>Improved social interactions</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # call to action
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem; background: #e8f4fd; border-radius: 10px;">
-        <h3>Ready to Take Control of Your Oral Health?</h3>
-        <p>Get started today with our AI-powered analysis in the Test tab.</p>
-    </div>
-    """, unsafe_allow_html=True)
 
-def analyze_image(image):
-    """Simulate image analysis"""
-    with st.spinner("Analyzing your oral health... This will just take a moment!"):
-        # simulate analysis with progress
-        progress_bar = st.progress(0)
-        for percent_complete in range(0, 101, 20):
-            time.sleep(0.5)
-            progress_bar.progress(percent_complete)
+def analyze_image_with_model(uploaded_file):
+    """Analyze uploaded image using the ML model - REPLACED SIMULATED FUNCTION"""
+    try:
+        # Open and preprocess the image
+        image = Image.open(uploaded_file)
         
-        # display results
-        st.success("Analysis Complete!")
-        
-        # show results in columns
-        result_col1, result_col2, result_col3 = st.columns(3)
-        
-        with result_col1:
-            st.metric("Health Score", "92%", "+5% from last check")
-            st.info("Excellent oral health!")
-        
-        with result_col2:
-            st.metric("Areas of Concern", "2", "-1 from last check")
-            st.warning("Minor improvements needed")
-        
-        with result_col3:
-            st.metric("Recommendations", "3", "Personalized for you")
-            st.success("Keep up the good work!")
-        
-        # detailed recommendations
-        st.markdown("---")
-        st.markdown("### Personalized Recommendations")
-        
-        rec_col1, rec_col2 = st.columns(2)
-        
-        with rec_col1:
-            st.markdown("""
-            **Brushing Tips:**
-            - Brush for 2 minutes, twice daily
-            - Use fluoride toothpaste
-            - Replace toothbrush every 3 months
-            - Pay attention to gum line
-            """)
+        with st.spinner("Processing image and analyzing..."):
+            # Preprocess image
+            image_tensor = preprocess_image(image, transform)
             
-            st.markdown("""
-            **Dietary Advice:**
-            - Reduce sugary snacks
-            - Drink more water
-            - Eat crunchy fruits & vegetables
-            - Limit acidic beverages
-            """)
-        
-        with rec_col2:
-            st.markdown("""
-            **Professional Care:**
-            - Schedule next check-up in 6 months
-            - Consider fluoride treatment
-            - Monitor wisdom teeth
-            - Discuss teeth cleaning options
-            """)
+            if image_tensor is None:
+                return None, None, "Error processing image"
             
-            st.markdown("""
-            **Monitoring:**
-            - Check again in 2 weeks
-            - Track progress in app
-            - Set reminders for dental care
-            - Maintain oral hygiene journal
-            """)
-        
-        # celebration button
-        if st.button("Celebrate My Healthy Smile!", use_container_width=True):
-            st.balloons()
-            st.success("You're doing amazing! Keep smiling!")
+            # Make prediction
+            predicted_class, probability = predict_image_class(
+                image_tensor, model, CLASS_NAMES, device
+            )
+            
+            # Get detailed feedback
+            feedback = get_prediction_feedback(predicted_class, probability)
+            
+            return predicted_class, probability, feedback
+            
+    except Exception as e:
+        return None, None, f"Analysis error: {str(e)}"
 
 def render_test_tab():
-    """Test tab with file upload only"""
-    st.markdown('<div class="section-header">Test Your Oral Health</div>', unsafe_allow_html=True)
+    """Test tab with ACTUAL ML model integration - UPDATED"""
+    st.markdown('<div class="section-header">Oral Health Analysis</div>', unsafe_allow_html=True)
     
     st.markdown("""
-    ### How it Works
-    Upload a clear photo of your teeth to get instant AI-powered analysis of your oral health. 
-    Our advanced algorithms will assess multiple factors and provide personalized recommendations.
+    ### AI-Powered Oral Screening
+    Upload a clear photo of your oral cavity to get an AI-powered analysis. 
+    Our model can help identify potential concerns that may require professional attention.
+    
+    **Note:** This is a screening tool, not a replacement for professional medical diagnosis.
     """)
     
-    # centered upload section
+    # Centered upload section
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("""
         <div style='text-align: center; margin-bottom: 2rem;'>
-            <h3>Upload Your Photo</h3>
-            <p>Get instant AI analysis of your oral health</p>
+            <h3>Upload Oral Photo</h3>
+            <p>Get AI analysis of your oral health</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # file uploader
+        # File uploader
         uploaded_file = st.file_uploader(
-            "Drag and drop or click to upload your photo", 
+            "Upload a clear photo of your mouth area", 
             type=['jpg', 'jpeg', 'png'],
-            help="Upload a clear, well-lit photo of your teeth for best results",
+            help="Ensure good lighting and clear focus for best results",
             key="file_uploader"
         )
         
         if uploaded_file is not None:
-            # display the uploaded image
-            st.image(uploaded_file, caption="Your Uploaded Image", use_column_width=True)
+            # Display the uploaded image
+            st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
             
-            # analyze button
-            analyze_col1, analyze_col2, analyze_col3 = st.columns([1, 2, 1])
-            with analyze_col2:
-                if st.button("Analyze My Smile", type="primary", use_container_width=True):
-                    analyze_image(uploaded_file)
-    
-    # for better photos
-    st.markdown("---")
-    st.markdown("### Tips for Best Results")
-    
-    tips_col1, tips_col2, tips_col3 = st.columns(3)
-    
-    with tips_col1:
-        st.markdown("""
-        **Lighting**
-        - Natural light is best
-        - Avoid shadows on face
-        - Even lighting on teeth
-        - No harsh direct light
-        """)
-    
-    with tips_col2:
-        st.markdown("""
-        **Photo Quality**
-        - Clear, focused image
-        - Teeth fully visible
-        - No blur or glare
-        - High resolution preferred
-        """)
-    
-    with tips_col3:
-        st.markdown("""
-        **Positioning**
-        - Smile naturally
-        - Show all teeth
-        - Front-facing angle
-        - Close-up shot works best
-        """)
-    
-    # supported formats
-    st.markdown("---")
-    st.markdown("### Supported Formats")
-    
-    format_col1, format_col2, format_col3 = st.columns(3)
-    
-    with format_col1:
-        st.markdown("**Image Types**")
-        st.markdown("- JPG/JPEG")
-        st.markdown("- PNG")
-        st.markdown("- High quality images")
-    
-    with format_col2:
-        st.markdown("**File Size**")
-        st.markdown("- Up to 10MB")
-        st.markdown("- Optimal: 1-5MB")
-        st.markdown("- No compression artifacts")
-    
-    with format_col3:
-        st.markdown("**Processing**")
-        st.markdown("- Instant analysis")
-        st.markdown("- Secure & private")
-        st.markdown("- No personal data stored")
+            # Analyze button - FIXED COLUMN NESTING
+            if st.button("Analyze Oral Health", type="primary", use_container_width=True):
+                # Perform analysis
+                predicted_class, probability, feedback = analyze_image_with_model(uploaded_file)
+                
+                if predicted_class is not None and feedback is not None:
+                    # Display results
+                    st.markdown("---")
+                    st.markdown("## Analysis Results")
+                    
+                    # Show prediction confidence - FIXED COLUMN STRUCTURE
+                    result_col1, result_col2 = st.columns(2)
+                    with result_col1:
+                        st.metric("Prediction", predicted_class)
+                    with result_col2:
+                        st.metric("Confidence Level", f"{probability:.1%}")
+                    
+                    # Display appropriate result card based on urgency
+                    if feedback['urgency_level'] == 'high':
+                        st.markdown(f"""
+                        <div class="result-high">
+                            <h3>{feedback['main_message']}</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    elif feedback['urgency_level'] == 'medium':
+                        st.markdown(f"""
+                        <div class="result-medium">
+                            <h3>{feedback['main_message']}</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div class="result-low">
+                            <h3>{feedback['main_message']}</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Detailed advice
+                    st.markdown("### Detailed Assessment")
+                    for advice in feedback['detailed_advice']:
+                        st.write(f"• {advice}")
+                    
+                    # Recommendations
+                    st.markdown("### Recommendations")
+                    for i, recommendation in enumerate(feedback['recommendations'], 1):
+                        st.write(f"{i}. {recommendation}")
+                    
+                    # Disclaimer
+                    st.markdown("---")
+                    st.info(
+                        "**Important Disclaimer:** This AI analysis is for screening purposes only. "
+                        "It is not a substitute for professional medical diagnosis. Always consult "
+                        "with qualified healthcare professionals for medical concerns."
+                    )
+                else:
+                    st.error(feedback)  # Show error message
 
 def render_about_tab():
     """About tab with project description"""
     st.markdown('<div class="section-header">About Umlomo</div>', unsafe_allow_html=True)
     
-    # project description
+    # Project description
     st.markdown("""
     ## Our Mission
     
@@ -416,89 +351,6 @@ def render_about_tab():
     We believe that everyone deserves a healthy smile, and technology should make that easier, 
     not more complicated.
     """)
-    
-    # how it works section
-    st.markdown("---")
-    st.markdown("## How It Works")
-    
-    steps_col1, steps_col2, steps_col3, steps_col4 = st.columns(4)
-    
-    with steps_col1:
-        st.markdown("""
-        <div class="feature-card">
-            <h4>1. Capture</h4>
-            <p>Upload a clear photo of your teeth using our intuitive interface</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with steps_col2:
-        st.markdown("""
-        <div class="feature-card">
-            <h4>2. Analyze</h4>
-            <p>Our AI examines 50+ dental health indicators in seconds</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with steps_col3:
-        st.markdown("""
-        <div class="feature-card">
-            <h4>3. Insights</h4>
-            <p>Get instant feedback and understand your oral health status</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with steps_col4:
-        st.markdown("""
-        <div class="feature-card">
-            <h4>4. Action</h4>
-            <p>Receive personalized recommendations for improvement</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # technology stack
-    st.markdown("---")
-    st.markdown("## Technology Stack")
-    
-    tech_col1, tech_col2, tech_col3 = st.columns(3)
-    
-    with tech_col1:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Artificial Intelligence</h4>
-            <ul>
-            <li>Computer Vision</li>
-            <li>Deep Learning Models</li>
-            <li>Neural Networks</li>
-            <li>Pattern Recognition</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with tech_col2:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Modern Development</h4>
-            <ul>
-            <li>Streamlit Framework</li>
-            <li>Python Backend</li>
-            <li>Responsive Design</li>
-            <li>Real-time Processing</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with tech_col3:
-        st.markdown("""
-        <div class="benefit-card">
-            <h4>Security & Privacy</h4>
-            <ul>
-            <li>Encrypted Data</li>
-            <li>Anonymous Analysis</li>
-            <li>Secure Storage</li>
-            <li>Privacy First Approach</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
 
 def render_contributor_card(name, role, description, github_url, github_handle):
     """Render a contributor card"""
@@ -522,7 +374,7 @@ def render_us_tab():
     to revolutionize oral healthcare through cutting-edge technology and compassionate design.
     """)
     
-    # core team section
+    # Core team section
     st.markdown("### Core Team")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -562,41 +414,20 @@ def render_us_tab():
             "https://github.com/Mr-poli",
             "Mr-poli"
         )
-    
-    # repository links section
-    st.markdown("---")
-    st.markdown('<div class="section-header">Project Links</div>', unsafe_allow_html=True)
-    
-    link_col1, link_col2, link_col3 = st.columns(3)
-    
-    with link_col1:
-        st.markdown("### GitHub Repository")
-        st.markdown("[![GitHub](https://img.shields.io/badge/View_Code-Repository-blue?style=for-the-badge&logo=github)](https://github.com/username/umlomo)") #to be updated
-        st.markdown("**Main Codebase**  \nAll the source code, issues, and project tracking")
-    
-    with link_col2:
-        st.markdown("### Documentation")
-        st.markdown("[![Docs](https://img.shields.io/badge/Read_Docs-Wiki-green?style=for-the-badge&logo=readthedocs)](https://github.com/username/umlomo/wiki)") #to be updated
-        st.markdown("**User Guides & API**  \nComprehensive documentation and tutorials")
-    
-    with link_col3:
-        st.markdown("### Issue Tracker")
-        st.markdown("[![Issues](https://img.shields.io/badge/Report_Issues-Bug_Tracker-red?style=for-the-badge&logo=git)](https://github.com/username/umlomo/issues)") #to be updated
-        st.markdown("**Bugs & Features**  \nReport issues or request new features")
 
 def main():
     """Main application function"""
     
-    # navigation bar with 4 tabs
+    # Navigation bar with 4 tabs
     selected_tab = st_navbar(
         ["Home", "Test", "About", "Us"],
         options={
-            "show_menu": False, #no menu
-            "show_sidebar": False, #no sidebar
+            "show_menu": False,
+            "show_sidebar": False,
         }
     )
     
-    # display content based on selected tab
+    # Display content based on selected tab
     if selected_tab == "Home":
         render_home_tab()
     elif selected_tab == "Test":
@@ -606,7 +437,7 @@ def main():
     elif selected_tab == "Us":
         render_us_tab()
     
-    # add footer to all pages
+    # Add footer to all pages
     render_footer()
 
 if __name__ == "__main__":
