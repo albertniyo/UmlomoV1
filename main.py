@@ -44,6 +44,18 @@ st.markdown("""
         margin-bottom: 2rem;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #f0f2f6;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
     .section-header {
         font-size: 2rem !important;
         color: #2e86ab;
@@ -357,9 +369,8 @@ def render_contributor_card(name, role, description, github_url, github_handle):
     st.markdown(f"""
     <div class="contributor-card">
         <h3>{name}</h3>
-        <p><strong>{role}</strong></p>
+        <h5>{role}</h5>
         <p>{description}</p>
-        <p>Email: <a href="mailto:{github_handle}@umlomo.com" style="color: #1f77b4;">{github_handle}@umlomo.com</a></p>
         <p>GitHub: <a href="{github_url}" style="color: #1f77b4;">Profile</a></p>
     </div>
     """, unsafe_allow_html=True)
@@ -381,26 +392,26 @@ def render_us_tab():
     
     with col1:
         render_contributor_card(
-            "Albert",
-            "Title",
-            "Task",
-            "https://github.com/Al04ni",
-            "Albert"
-        )
-    
-    with col2:
-        render_contributor_card(
-            "Munyakazi",
-            "Title",
+            "Kevin",
+            "Nshuti Basabose",
             "Task",
             "https://github.com/kevin",
             "Kevin"
         )
     
+    with col2:
+        render_contributor_card(
+            "Carine",
+            "Umugabekazi",
+            "Task",
+            "https://github.com/Mr-poli",
+            "Mr-poli"
+        )
+    
     with col3:
         render_contributor_card(
             "Poli",
-            "Title",
+            "Ninshuti Ndiramiye",
             "Task",
             "https://github.com/poli",
             "Poli"
@@ -408,11 +419,11 @@ def render_us_tab():
     
     with col4:
         render_contributor_card(
-            "Carine",
-            "Title",
+            "Albert",
+            "Niyonsenga",
             "Task",
-            "https://github.com/Mr-poli",
-            "Mr-poli"
+            "https://github.com/Al04ni",
+            "Albert"
         )
 
 def main():
