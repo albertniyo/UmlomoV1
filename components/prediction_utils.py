@@ -32,7 +32,7 @@ def predict_image_class(image_tensor, model, class_names, device):
             predicted_class = class_names[predicted_idx.item()]
             
             inference_time = time.time() - start_time
-            print(f"Prediction completed in {inference_time:.3f} seconds")
+            print(f"\nPrediction completed in {inference_time:.3f} seconds,")
 
             return predicted_class, predicted_prob.item()
             
@@ -132,4 +132,4 @@ def get_prediction_feedback(predicted_class, predicted_probability):
     else:
         return FEEDBACK_TEMPLATES['error']
 
-print("Prediction utilities optimized with performance enhancements")
+print("\nPrediction utilities optimized with performance enhancements")
