@@ -392,29 +392,28 @@ def render_us_tab():
     
     with col1:
         render_contributor_card(
-            "Kevin",
-            "Nshuti Basabose",
+            "Albert",
+            "Niyonsenga",
             "Task",
-            "https://github.com/kevin",
-            "Kevin"
+            "https://github.com/Al04ni",
+            "Albert"
         )
-    
     with col2:
         render_contributor_card(
-            "Carine",
-            "Umugabekazi",
+            "Albert",
+            "Niyonsenga",
             "Task",
-            "https://github.com/Mr-poli",
-            "Mr-poli"
+            "https://github.com/Al04ni",
+            "Albert"
         )
     
     with col3:
         render_contributor_card(
-            "Poli",
-            "Ninshuti Ndiramiye",
+            "Albert",
+            "Niyonsenga",
             "Task",
-            "https://github.com/poli",
-            "Poli"
+            "https://github.com/Al04ni",
+            "Albert"
         )
     
     with col4:
