@@ -1,0 +1,15 @@
+[project]
+name = "umlomov1"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=12.1.1",
+    "streamlit>=1.55.0",
+    "streamlit-community-navigation-bar>=4.7.11",
+    "streamlit-navigation-bar>=3.3.0",
+    "streamlit-option-menu>=0.4.0",
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+]
