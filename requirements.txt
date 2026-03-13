@@ -1,5 +1,7 @@
 streamlit
 streamlit-navigation-bar
+streamlit-community-navigation-bar
+streamlit-option-menu
 torch
 torchvision
 pillow
